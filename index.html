@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QC検定4級 e-learning</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Serif JP', serif;
+            background-color: #1a202c;
+            color: #e2e8f0;
+        }
+        .quiz-container {
+            background-color: #2d3748;
+            border: 1px solid #4a5568;
+        }
+        .question-card {
+            background-color: #4a5568;
+            border-left: 5px solid #d69e2e; /* gold-500 */
+        }
+        .btn {
+            transition: all 0.3s ease;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-weight: bold;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+        .btn-primary {
+            background-color: #d69e2e;
+            color: #1a202c;
+        }
+        .btn-primary:hover {
+            background-color: #b7791f;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(214, 158, 46, 0.2);
+        }
+        .btn-secondary {
+            background-color: #4a5568;
+            color: #e2e8f0;
+            border-color: #718096;
+        }
+        .btn-secondary:hover {
+            background-color: #718096;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(113, 128, 150, 0.2);
+        }
+        .option-label {
+            border: 2px solid #718096;
+            transition: all 0.2s ease;
+        }
+        .option-label:hover {
+            background-color: #4a5568;
+            border-color: #d69e2e;
+        }
+        input[type="radio"]:checked + .option-label {
+            background-color: #b7791f;
+            border-color: #d69e2e;
+            color: #ffffff;
+        }
+        .result-card {
+            border-left-width: 5px;
+        }
+        .result-correct {
+            background-color: rgba(56, 161, 105, 0.1); /* green-500 */
+            border-left-color: #38a169;
+        }
+        .result-incorrect {
+            background-color: rgba(229, 62, 62, 0.1); /* red-500 */
+            border-left-color: #e53e3e;
+        }
+        .explanation {
+            background-color: #2d3748;
+            border-top: 1px dashed #718096;
+        }
+        #result-summary {
+            background: linear-gradient(135deg, #d69e2e, #b7791f);
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+
+    <div class="max-w-4xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold font-serif text-white">QC検定4級</h1>
+            <p class="text-lg text-gray-400 mt-2">社内e-learningコンテンツ</p>
+        </header>
+
+        <main id="quiz-container" class="quiz-container p-6 sm:p-8 rounded-lg shadow-2xl">
+            <!-- 問題はここに動的に挿入されます -->
+        </main>
+
+        <div id="result-container" class="hidden mt-8">
+            <!-- 結果はここに動的に挿入されます -->
+        </div>
+
+        <div id="button-container" class="text-center mt-8 space-x-0 sm:space-x-4 space-y-4 sm:space-y-0">
+            <button id="submit-btn" class="btn btn-primary w-full sm:w-auto">採点する</button>
+            <button id="retry-btn" class="btn btn-secondary hidden w-full sm:w-auto">再挑戦する</button>
+            <button id="pdf-btn" class="btn btn-secondary hidden w-full sm:w-auto">PDFで出力</button>
+            <button id="csv-btn" class="btn btn-secondary hidden w-full sm:w-auto">CSVで出力</button>
+        </div>
+    </div>
+
+    <script>
+        const allQuestions = [
+            // この配列に100問すべての問題データを格納します
+            // 以下はサンプルデータです。実際のデータは提供された資料から作成します。
+            { "id": 1, "question": "品質管理検定（QC検定）4級の主な対象者は誰ですか？", "options": { "A": "品質管理の専門家", "B": "経営層", "C": "品質管理を初めて学ぶ人や、企業・組織で働くすべての人々", "D": "品質管理部門のリーダー" }, "answer": "C", "explanation": "QC検定4級は、品質管理を初めて学ぶ人や、企業、組織に所属し、そこで働くすべての人々を対象としています。" },
+            { "id": 2, "question": "品質とは一般的にどのように定義されますか？", "options": { "A": "価格の安さ", "B": "機能の多さ", "C": "使用目的を満たしている程度（fitness for use）", "D": "最新技術の導入度" }, "answer": "C", "explanation": "品質とは、「使用目的を満たしている程度（fitness for use）」と定義され、顧客の期待を満たし顧客満足を得ることが重要です。" },
+            { "id": 3, "question": "品質に関する問題は、理想と現実の間に何が生じることと捉えられますか？", "options": { "A": "利益", "B": "ギャップ", "C": "成功", "D": "競争" }, "answer": "B", "explanation": "品質に関する問題は、理想と現実の間に生じる「ギャップ」と捉えられます。" },
+            { "id": 4, "question": "品質管理活動の基本的な二つの活動は何と何ですか？", "options": { "A": "計画と実行", "B": "分析と評価", "C": "維持と改善", "D": "報告と連絡" }, "answer": "C", "explanation": "品質管理は、良い製品やサービスを作り続けるための「維持」と「改善」の活動を含みます。" },
+            { "id": 5, "question": "業務改善を継続的に進めるためのサイクルで、「計画（Plan）→実行（Do）→確認（Check）→処置（Act）」の4段階を繰り返すものは何ですか？", "options": { "A": "SDCAサイクル", "B": "DMAICサイクル", "C": "PDCAサイクル", "D": "QCストーリー" }, "answer": "C", "explanation": "PDCAサイクルは、業務の改善を継続的に進めるための「計画（Plan）→実行（Do）→確認（Check）→処置（Act）」の4段階を繰り返すものです。" },
+            { "id": 6, "question": "決まった良いやり方（標準）を維持し、定着させるためのサイクルは何ですか？", "options": { "A": "PDCAサイクル", "B": "SDCAサイクル", "C": "QCストーリー", "D": "5W1H" }, "answer": "B", "explanation": "SDCAサイクルは、決まった良いやり方（標準）を維持し、定着させるためのサイクルです。" },
+            { "id": 7, "question": "問題解決や改善活動を体系的かつ効率的に進めるための手順（ステップ）を何と呼びますか？", "options": { "A": "PDCAサイクル", "B": "SDCAサイクル", "C": "QCストーリー", "D": "QC七つ道具" }, "answer": "C", "explanation": "QCストーリーは、問題解決や改善活動を体系的かつ効率的に進めるための手順（ステップ）です。" },
+            { "id": 8, "question": "多くの問題の中から、影響が大きい少数の問題を優先して解決するという考え方を何と呼びますか？", "options": { "A": "全面解決", "B": "重点指向の考え方", "C": "全員参加", "D": "段階的アプローチ" }, "answer": "B", "explanation": "重点指向の考え方とは、多くの問題の中から、影響が大きい少数の問題を優先して解決するという考え方です。これはパレートの法則に関連します。" },
+            { "id": 9, "question": "業務のやり方を定めて維持することで、品質と効率の安定化を図る活動は何ですか？", "options": { "A": "改善", "B": "標準化", "C": "検査", "D": "データ分析" }, "answer": "B", "explanation": "標準化は、業務のやり方を定めて維持することで、品質と効率の安定化を図る活動です。" },
+            { "id": 10, "question": "標準化活動のメリットとして最も不適切なものはどれですか？", "options": { "A": "作業ミスの防止", "B": "品質安定化", "C": "能率向上", "D": "業務の属人化" }, "answer": "D", "explanation": "標準化は、作業ミスの防止、品質の安定、能率の向上に貢献しますが、業務の属人化は標準化のメリットではなく、むしろ標準化によって避けられるべき状態です。" },
+            { "id": 11, "question": "製品やサービスが仕様や基準を満たしているかを確認する活動は何ですか？", "options": { "A": "改善", "B": "標準化", "C": "検査", "D": "測定" }, "answer": "C", "explanation": "検査は、製品やサービスが仕様や基準を満たしているかを確認する活動です。" },
+            { "id": 12, "question": "製品やサービスを作り出すための一連の活動や工程を指す言葉は何ですか？", "options": { "A": "成果", "B": "プロセス", "C": "品質", "D": "目標" }, "answer": "B", "explanation": "プロセスとは、製品やサービスを作り出すための一連の活動や工程を指します。" },
+            { "id": 13, "question": "プロセスを構成する主要な要素として挙げられる「4M」は何ですか？", "options": { "A": "Man, Money, Market, Management", "B": "Man, Machine, Material, Method", "C": "Measurement, Maintenance, Motivation, Management", "D": "Map, Model, Market, Manpower" }, "answer": "B", "explanation": "プロセスを構成する主要な要素として、人（Man）、機械・設備（Machine）、材料（Material）、方法（Method）の「4M」が挙げられます。" },
+            { "id": 14, "question": "客観的な事実に基づいた判断を行うための定量的情報を何と呼びますか？", "options": { "A": "経験", "B": "直感", "C": "推測", "D": "データ" }, "answer": "D", "explanation": "品質管理においては、事実に基づく判断が大切であり、客観的な事実に基づいた定量的情報はデータと呼ばれます。" },
+            { "id": 15, "question": "データの種類で、不良品数やクレーム件数のように数えられるものを何と呼びますか？", "options": { "A": "計数値データ", "B": "計量値データ", "C": "連続データ", "D": "分類データ" }, "answer": "A", "explanation": "不良品数やクレーム件数のように数えられるデータは「計数値データ」と呼ばれます。" },
+            { "id": 16, "question": "データの種類で、長さ、重さ、時間、温度のように連続的に測られるものを何と呼びますか？", "options": { "A": "計数値データ", "B": "計量値データ", "C": "分類データ", "D": "質的データ" }, "answer": "B", "explanation": "長さ、重さ、時間、温度のように連続的に測られるデータは「計量値データ」と呼ばれます。" },
+            { "id": 17, "question": "ある対象全体の集まりを何と呼びますか？", "options": { "A": "サンプル", "B": "母集団", "C": "グループ", "D": "ロット" }, "answer": "B", "explanation": "対象となる全体の集まりは「母集団」と呼ばれます。" },
+            { "id": 18, "question": "母集団の性質を知るために、その一部を抜き出したものを何と呼びますか？", "options": { "A": "全数検査", "B": "ロット", "C": "サンプル", "D": "プロセス" }, "answer": "C", "explanation": "母集団の性質を知るために、その一部を抜き出したものは「サンプル」と呼ばれます。" },
+            { "id": 19, "question": "データを採取する目的として最も適切なものはどれですか？", "options": { "A": "データそのものの性質を知るため", "B": "データを採取した場面の状況を知るため", "C": "データを採取する人に責任をもたせるため", "D": "母集団の性質を知って処置（アクション）をとるため" }, "answer": "D", "explanation": "データを取る目的は、データそのものを知るだけでなく、母集団の性質を知って処置（アクション）をとるためです。" },
+            { "id": 20, "question": "データの中心を示す尺度としてよく用いられるものは何ですか？", "options": { "A": "範囲", "B": "平均（Mean）", "C": "ばらつき", "D": "標準偏差" }, "answer": "B", "explanation": "データの中心を示す尺度として、平均（Mean）や中央値（Median）がよく用いられます。" },
+            { "id": 21, "question": "データの散らばり具合を示す尺度で、最大値から最小値を引いた値を何と呼びますか？", "options": { "A": "平均", "B": "中央値", "C": "範囲（Range）", "D": "標準偏差" }, "answer": "C", "explanation": "データの散らばり具合を示す値で、最大値から最小値を引いた値を「範囲（Range）」と呼びます。" },
+            { "id": 22, "question": "データは必ずばらつくので、母集団の傾向を把握するためには何と何の側面から検討することが重要ですか？", "options": { "A": "経験と直感", "B": "平均的（中心）傾向とばらつき傾向", "C": "データの数値そのものだけ", "D": "質と量" }, "answer": "B", "explanation": "データは必ずばらつくため、母集団の傾向を把握するには、平均的（中心）傾向とばらつき傾向の両面から検討することが重要です。" },
+            { "id": 23, "question": "計量値データに該当しないものはどれですか？", "options": { "A": "部品の寸法", "B": "毎月のクレーム件数", "C": "製品の重さ", "D": "作業時間" }, "answer": "B", "explanation": "毎月のクレーム件数は数えられるデータであり「計数値データ」に該当します。部品の寸法、製品の重さ、作業時間は測られる「計量値データ」です。" },
+            { "id": 24, "question": "データの種類で、数値で表す計量値データや計数値データとは異なり、数値で表されないデータを何と呼びますか？", "options": { "A": "質的データ", "B": "言語データ", "C": "連続データ", "D": "カテゴリデータ" }, "answer": "B", "explanation": "データには、数値で表す計量値データや計数値データとは別に、数値で表されない「言語データ（質的データ）」があります。" },
+            { "id": 25, "question": "データの中心傾向を示す尺度の一つで、データを大きさの順に並べたとき、ちょうど真ん中に位置する値は何ですか？", "options": { "A": "平均", "B": "最頻値", "C": "中央値（メディアン）", "D": "範囲" }, "answer": "C", "explanation": "中央値（メディアン）は、データを大きさの順に並べたとき、データの数が奇数の場合は中央に位置する値、偶数の場合は中央の2つの値の平均です。" },
+            { "id": 26, "question": "問題の原因を重要度が高い順に並べ、重点的に取り組むべき項目を特定するために用いられる図は何ですか？", "options": { "A": "特性要因図", "B": "ヒストグラム", "C": "パレート図", "D": "管理図" }, "answer": "C", "explanation": "パレート図は、不良や問題の原因を重要度が高い順に並べ、重点的に取り組むべき項目を特定するために用いる図です。" },
+            { "id": 27, "question": "特定の問題の潜在的な原因を体系的に洗い出し、整理するために用いられ、「魚の骨」のように見える図は何ですか？", "options": { "A": "パレート図", "B": "ヒストグラム", "C": "特性要因図（フィッシュボーン図）", "D": "散布図" }, "answer": "C", "explanation": "特性要因図（フィッシュボーン図）は、特定の問題の潜在的な原因を体系的に洗い出し、整理するために用いられます。" },
+            { "id": 28, "question": "データの分布の形やばらつきを視覚的に把握するための棒グラフは何ですか？", "options": { "A": "パレート図", "B": "散布図", "C": "ヒストグラム", "D": "折れ線グラフ" }, "answer": "C", "explanation": "ヒストグラムは、データの分布の形やばらつきを視覚的に把握するための棒グラフです。" },
+            { "id": 29, "question": "データの変化や傾向を分かりやすく示すための図で、時系列の変化を見る際などに使用されるものは何ですか？", "options": { "A": "ヒストグラム", "B": "パレート図", "C": "グラフ（折れ線グラフ、円グラフなど）", "D": "チェックシート" }, "answer": "C", "explanation": "グラフは、データの変化や傾向を分かりやすく示すための図であり、時系列データなどを視覚的に理解するために用いられます。" },
+            { "id": 30, "question": "工程が安定した状態にあるかを時系列で監視し、異常を検出するために用いられる図は何ですか？", "options": { "A": "ヒストグラム", "B": "パレート図", "C": "管理図", "D": "散布図" }, "answer": "C", "explanation": "管理図は、工程が安定した状態にあるかを時系列で監視し、異常を検出するために用いられる図です。" },
+            { "id": 31, "question": "データ収集を効率的に行うための記録用紙は何ですか？", "options": { "A": "グラフ用紙", "B": "チェックシート", "C": "管理図", "D": "メモ用紙" }, "answer": "B", "explanation": "チェックシートは、データ収集を効率的に行うための記録用紙です。" },
+            { "id": 32, "question": "2つの変数の間に相関関係があるかを視覚的に確認するために用いられる図は何ですか？", "options": { "A": "ヒストグラム", "B": "特性要因図", "C": "散布図", "D": "パレート図" }, "answer": "C", "explanation": "散布図は、2つの変数の間に相関関係があるかを視覚的に確認するために用いられます。" },
+            { "id": 33, "question": "データをいくつかの均質なグループに分けて分析することで、全体では見えなかった特徴や原因を明らかにする手法は何ですか？", "options": { "A": "全数調査", "B": "サンプリング", "C": "層別", "D": "無作為抽出" }, "answer": "C", "explanation": "層別は、データをいくつかの均質なグループに分けて分析することで、全体では見えなかった特徴や原因を明らかにする手法です。" },
+            { "id": 34, "question": "QC七つ道具の活用において、もっとも不適切な説明はどれですか？", "options": { "A": "QC七つ道具は、問題解決や改善活動を進めるための基本的なツールである。", "B": "データを視覚的に示し、分かりやすく理解するために活用する。", "C": "QC七つ道具は、あくまでツールであり、それ自体が問題解決の最終的な答えである 。", "D": "問題解決の次の行動につなげるために、これらのツールを活用する。" }, "answer": "C", "explanation": "QC七つ道具は、あくまでツールであり、それ自体が問題解決の最終的な答えではありません。プロセスを正しく見つめ、次の行動につなげるために活用するものです。" },
+            { "id": 35, "question": "提供されたソースの図1に示されているQC七つ道具の名称は何ですか？（図1はmd_4875.pdfの56ページにあるパレート図を指す）", "options": { "A": "ヒストグラム", "B": "管理図", "C": "特性要因図", "D": "パレート図" }, "answer": "D", "explanation": "提供されたソースの図1はパレート図の例です。" },
+            { "id": 36, "question": "図1のQC七つ道具（パレート図）の説明として最も適切なものはどれですか？", "options": { "A": "連続した観測値や統計量の値を時系列に打点し、管理限界線を持つもの", "B": "項目別に層別し、出現頻度の大きさの順に並べるとともに、累積和を示したもの", "C": "データの分布の形やばらつきを視覚的に把握するための棒グラフ", "D": "データの変化や傾向を分かりやすく示すための図" }, "answer": "B", "explanation": "パレート図は、項目別に層別し、出現頻度の大きさの順に並べ、累積和を示す図です。" },
+            { "id": 37, "question": "図1のQC七つ道具（パレート図）の用途として最も適切なものはどれですか？", "options": { "A": "工程が安定した状態にあるかを監視し、異常を検出する", "B": "特定の問題の潜在的な原因を体系的に洗い出し、整理する", "C": "問題解決に取り組む対象を選ぶときなどに、何が重要か、それが全体のどれくらいを占めているかを知るために用いる", "D": "2つの変数の間に相関関係があるかを視覚的に確認する" }, "answer": "C", "explanation": "パレート図は、問題解決に取り組む対象を選ぶ際、何が重要で、それが全体に占める割合はどの程度かを知るために用いられます。" },
+            { "id": 38, "question": "組織内の情報共有と円滑なコミュニケーションの基本とされる活動は何ですか？", "options": { "A": "5W1H", "B": "PDCAサイクル", "C": "報告・連絡・相談（ほうれんそう）", "D": "5ゲン主義" }, "answer": "C", "explanation": "報告・連絡・相談（ほうれんそう）は、組織内の情報共有と円滑なコミュニケーションの基本です。" },
+            { "id": 39, "question": "報告のポイントとして、最も不適切なものはどれですか？", "options": { "A": "報告は事実に基づいて行う。", "B": "決められた納期や連絡事項を守って行う。", "C": "都合の悪い報告は後回しにする 。", "D": "報告は、わかりやすく要点を簡潔に伝える。" }, "answer": "C", "explanation": "都合の悪い報告であっても、事実に基づいて速やかに報告することが重要です。報告の遅れや隠蔽は、さらなる問題を引き起こす可能性があります。" },
+            { "id": 40, "question": "問題解決や計画立案の際に、情報を明確にするためのフレームワークは何ですか？", "options": { "A": "PDCA", "B": "SDCA", "C": "5W1H", "D": "ほうれんそう" }, "answer": "C", "explanation": "5W1Hは、問題解決や計画立案の際に、「When（いつ）、Where（どこで）、Who（だれが）、What（何を）、Why（なぜ）、How（どのように）」を明確にするためのフレームワークです。" },
+            { "id": 41, "question": "問題解決のために「現場（実際の場所）、現物（実際の物）、現実（実際の状況）」を自ら確認することの重要性を示す考え方は何ですか？", "options": { "A": "5ゲン主義", "B": "三現主義", "C": "5W1H", "D": "重点指向" }, "answer": "B", "explanation": "三現主義は、問題解決のために「現場、現物、現実」を自ら確認することの重要性を示す考え方です。" },
+            { "id": 42, "question": "「三現主義」の説明として正しいものはどれですか？", "options": { "A": "問題解決の基本を成す言葉で、事実を見極めるために現場に3回以上通うことが大切との考え方", "B": "現場で問題解決を行う時の品質管理手法を、考え方・展開の仕方・具体的事例を3冊の小冊子で解説してあるためこの名前がついている", "C": "一般的には、「現場・現物・現実」の3つの現をとって3現という。この3つを大切にして事実をよく見て仕事をするという態度", "D": "一人で3つ以上の現場について品質を担当できる力量を持つと、品質管理をマスターしたことになるという考え方" }, "answer": "C", "explanation": "三現主義は、「現場・現物・現実」の3つの「現」を大切にし、事実をよく見て仕事をする態度を指します。" },
+            { "id": 43, "question": "三現主義に「原理」と「原則」を加えた考え方を何と呼びますか？", "options": { "A": "PDCAサイクル", "B": "5ゲン主義", "C": "重点指向", "D": "標準化" }, "answer": "B", "explanation": "三現主義に「原理」と「原則」を加えた考え方を5ゲン主義と呼びます。" },
+            { "id": 44, "question": "社会人としての基本的な態度や行動であり、顧客満足にもつながる重要な要素は何ですか？", "options": { "A": "スキル", "B": "知識", "C": "マナー", "D": "経験" }, "answer": "C", "explanation": "マナーは、社会人としての基本的な態度や行動であり、顧客満足にもつながる重要な要素です。" },
+            { "id": 45, "question": "勤務時間中に私的な用件で携帯電話を使用したり、会社の備品を個人的な理由のために使用しないことを意味するマナーの項目は何ですか？", "options": { "A": "身だしなみ", "B": "整理・整頓", "C": "清掃", "D": "公私混同" }, "answer": "D", "explanation": "これは「公私混同」を避けるというマナーの説明です。" },
+            { "id": 46, "question": "上司や先輩に敬語で接することや、年下の人に対しても呼び捨てにしないなどの心がけが必要なマナーの項目は何ですか？", "options": { "A": "健康管理", "B": "挨拶", "C": "時間の厳守", "D": "言葉遣い" }, "answer": "D", "explanation": "これは「言葉遣い」に関するマナーの説明です。" },
+            { "id": 47, "question": "会議開始時間には、既に出席しているようにしておくなどの意識をもって行動すること、を意味するマナーの項目は何ですか？", "options": { "A": "言葉遣い", "B": "挨拶", "C": "身だしなみ", "D": "時間の厳守" }, "answer": "D", "explanation": "これは「時間の厳守」に関するマナーの説明です。" },
+            { "id": 48, "question": "出社時や退社時、会議で集合したときなど、相手の目を見てしっかり行うことが大切なマナーの項目は何ですか？", "options": { "A": "公私混同", "B": "言葉遣い", "C": "時間の厳守", "D": "挨拶" }, "answer": "D", "explanation": "これは「挨拶」に関するマナーの説明です。" },
+            { "id": 49, "question": "お金をもらって働くプロとして責任をもって仕事を行い、組織の一員であることを常に意識し、自分勝手な行動はとらないことを意味するマナーの項目は何ですか？", "options": { "A": "健康管理", "B": "社会人としての自覚", "C": "挨拶", "D": "整理・整頓" }, "answer": "B", "explanation": "これは「社会人としての自覚」に関するマナーの説明です。" },
+            { "id": 50, "question": "検太くんと業務課長の会話で、検太くんの「まあまあです。」という答え方はマナーとして適切ですか？", "options": { "A": "適切である", "B": "不適切である" }, "answer": "B", "explanation": "「まあまあです。」という答え方は、上司に対する返答として適切ではありません。もっと肯定的な表現や具体的な状況を伝えるべきです。" },
+            { "id": 51, "question": "検太くんが遅刻した場合の上司の注意に対し、今後最も適切に対応すべき行動は何ですか？", "options": { "A": "電車やバスが遅れるのは仕方が無いので、上司にそれを理解させる", "B": "電車やバスの遅れにより遅刻することもあるので、タイムレコーダーがあるので、特に対処はしない", "C": "電車やバスが遅れるのは仕方が無いので、電話連絡などを入れるようにする", "D": "電車やバスが多少遅れても、遅刻にならないように余裕をもって出勤するようにし、万一遅れた場合は電話連絡などをする" }, "answer": "D", "explanation": "時間の厳守は社会人としてのマナーであり、予測される遅延も考慮して余裕をもって行動すべきです。万が一遅れる場合は速やかに連絡を入れることが重要です。" },
+            { "id": 52, "question": "職場で行われる、作業中に潜む危険を事前に予測し、対策を立てる活動を何と呼びますか？", "options": { "A": "5S活動", "B": "危険予知活動（KYK）", "C": "品質改善活動", "D": "標準化活動" }, "answer": "B", "explanation": "危険予知活動（KYK）は、作業中に潜む危険を事前に予測し、対策を立てる活動です。" },
+            { "id": 53, "question": "1件の重大な災害の背後には多数の軽微な事故やヒヤリ・ハットがあるという法則は何ですか？", "options": { "A": "パレートの法則", "B": "ゴードンの法則", "C": "ハインリッヒの法則", "D": "ベルヌーイの法則" }, "answer": "C", "explanation": "ハインリッヒの法則は、1件の重大な災害の背後には多数の軽微な事故やヒヤリ・ハットがあるという法則です。" },
+            { "id": 54, "question": "品質管理の最終的な目的は、顧客の何を獲得することですか？", "options": { "A": "利益", "B": "信頼", "C": "顧客満足", "D": "評判" }, "answer": "C", "explanation": "品質管理は、「使用目的を満たしている程度（fitness for use）」を目指し、最終的に顧客満足を得ることが重要です。" },
+            { "id": 55, "question": "「製品やサービスが使用目的を満たしている程度」とは、品質のどの側面を指しますか？", "options": { "A": "魅力品質", "B": "当然品質", "C": "一元品質", "D": "ねらいの品質" }, "answer": "D", "explanation": "顧客の期待に応え、使用目的を満たすように製品やサービスを設計することを「ねらいの品質」と呼びます。" },
+            { "id": 56, "question": "品質管理における「維持」活動の目的は何ですか？", "options": { "A": "新しい製品を開発する", "B": "決まった標準や規則に従って、良い製品やサービスを作り続けること", "C": "既存の業務プロセスを根本的に変える", "D": "顧客からのクレームに対応する" }, "answer": "B", "explanation": "維持活動は、決まった標準や規則に従って、良い製品やサービスを安定的かつ継続して生み出す活動です。" },
+            { "id": 57, "question": "品質管理における「改善」活動の目的は何ですか？", "options": { "A": "既存の製品やサービスの品質を維持する", "B": "現在の仕事のやり方をより良くしたり、間違いを減らしたり、能率を上げたりする活動", "C": "法律や規制を遵守する", "D": "顧客からのフィードバックを収集する" }, "answer": "B", "explanation": "改善活動は、現在の仕事のやり方をより良くしたり、間違いを減らしたり、能率を上げたりする活動です。" },
+            { "id": 58, "question": "PDCAサイクルにおける「C（Check）」の段階で実施すべきことは何ですか？", "options": { "A": "目標を設定し、計画を立てる", "B": "計画に基づいて作業を実行する", "C": "実行した結果が良かったかどうか、計画と実績のギャップ、問題や原因を確認する", "D": "問題や原因に対して対策を立て、次の計画につなげる" }, "answer": "C", "explanation": "PDCAサイクルのC（Check）では、実行した結果が良かったかどうか、計画と実績のギャップ、問題や原因を確認します。" },
+            { "id": 59, "question": "PDCAサイクルにおける「A（Act）」の段階で実施すべきことは何ですか？", "options": { "A": "目標を設定し、計画を立てる", "B": "計画に基づいて作業を実行する", "C": "実行した結果が良かったかどうかを確認する", "D": "計画と実績の差異が生じた場合、その原因やプロセスの問題に対し対策を立て、次の計画や標準化につなげる" }, "answer": "D", "explanation": "PDCAサイクルのA（Act）では、計画と実績の差異が生じた場合、その原因やプロセスの問題に対し対策を立て、次の計画や標準化につなげます。" },
+            { "id": 60, "question": "QCストーリーの一般的なステップで、問題点の「改善策の検討」の前に行われるべきステップは何ですか？", "options": { "A": "効果の確認", "B": "現状把握と目標設定", "C": "処置の定着", "D": "テーマ選定" }, "answer": "B", "explanation": "QCストーリーの例では、「現状把握と目標設定」が「対策の実施」の前に位置します。" },
+            { "id": 61, "question": "職場で行われる、自発的な品質改善活動を何と呼びますか？", "options": { "A": "品質保証活動", "B": "品質監査", "C": "小集団改善活動（QCサークル活動）", "D": "全員参加活動" }, "answer": "C", "explanation": "職場で行われる、自発的な品質改善活動は「小集団改善活動（QCサークル活動）」と呼ばれます。" },
+            { "id": 62, "question": "標準化の目的で最も適切なものはどれですか？", "options": { "A": "個人の裁量で仕事を進めること", "B": "業務のやり方を定めて維持し、品質と効率の安定化を図ること", "C": "常に新しい方法を試すこと", "D": "検査の頻度を減らすこと" }, "answer": "B", "explanation": "標準化の目的は、業務のやり方を定めて維持することで、品質と効率の安定化を図ることです。" },
+            { "id": 63, "question": "日本産業規格（JIS）を制定しているのはどの組織ですか？", "options": { "A": "ISO", "B": "IEC", "C": "JIS", "D": "日本規格協会" }, "answer": "C", "explanation": "産業標準化法によって制定されている日本産業規格はJISと呼ばれます。" },
+            { "id": 64, "question": "国際標準化機構の略称は何ですか？", "options": { "A": "IEC", "B": "JIS", "C": "ISO", "D": "JSA" }, "answer": "C", "explanation": "国際標準化機構はISO（International Organization for Standardization）と略されます。" },
+            { "id": 65, "question": "検査の種類で、原材料や一部加工品を受け入れる際に行われる検査は何ですか？", "options": { "A": "中間検査", "B": "最終検査", "C": "出荷検査", "D": "受入検査" }, "answer": "D", "explanation": "原材料や一部加工品を受け入れる際に行われる検査は「受入検査」と呼ばれます。" },
+            { "id": 66, "question": "プロセスのインプットからアウトプットに至る一連の活動で、付加価値を生み出す活動を何と呼びますか？", "options": { "A": "検査", "B": "維持活動", "C": "工程", "D": "改善活動" }, "answer": "C", "explanation": "製品やサービスを作り出すプロセスは「工程」とも呼ばれ、インプットからアウトプットに至る一連の活動を指します。" },
+            { "id": 67, "question": "統計的な判断において、対象となる全体の集まりの一部を抜き出す手法を何と呼びますか？", "options": { "A": "全数調査", "B": "サンプリング", "C": "層別", "D": "全体調査" }, "answer": "B", "explanation": "母集団の性質を知るために、その一部を抜き出す手法を「サンプリング」と呼びます。" },
+            { "id": 68, "question": "データを収集する際に、偏りなく母集団からランダムにサンプルを抽出する方法を何と呼びますか？", "options": { "A": "層別サンプリング", "B": "系統サンプリング", "C": "無作為サンプリング（ランダムサンプリング）", "D": "集中サンプリング" }, "answer": "C", "explanation": "母集団から偏りなくランダムにサンプルを抽出する方法を「無作為サンプリング（ランダムサンプリング）」と呼びます。" },
+            { "id": 69, "question": "QC七つ道具は、品質管理でデータを取り扱う際に、どのような目的で活用されますか？", "options": { "A": "個人の勘や経験に頼るため", "B": "データを収集、整理、分析し、問題解決や改善に役立てるため", "C": "意思決定を迅速化するため", "D": "報告書を簡単にするため" }, "answer": "B", "explanation": "QC七つ道具は、品質管理活動でデータを収集、整理、分析し、問題解決や改善に役立てるための基本的な道具です。" },
+            { "id": 70, "question": "パレート図において、重要度の高い項目が全体の約80%を占める場合、これは何という考え方に基づいていますか？", "options": { "A": "ハインリッヒの法則", "B": "パレートの法則", "C": "5ゲン主義", "D": "PDCAサイクル" }, "answer": "B", "explanation": "パレート図は「重点指向の考え方」に基づき、影響が大きい少数の問題を優先的に解決することを示し、これはパレートの法則（80:20の法則）と関連しています。" },
+            { "id": 71, "question": "特性要因図において、原因を分類する際に用いられる主要な4つのMは何ですか？", "options": { "A": "Money, Market, Method, Measurement", "B": "Man, Machine, Material, Method", "C": "Management, Maintenance, Motivation, Manpower", "D": "Measure, Move, Monitor, Make" }, "answer": "B", "explanation": "特性要因図では、原因を「人（Man）、機械・設備（Machine）、材料（Material）、方法（Method）」の4Mに分類して整理することが一般的です。" },
+            { "id": 72, "question": "ヒストグラムで、データの分布が左右対称で中央に最も多く、中央から離れるに従って少なくなる形を何と呼びますか？", "options": { "A": "二山形", "B": "離れ小島形", "C": "一般形", "D": "絶壁形" }, "answer": "C", "explanation": "ヒストグラムの「一般形」は、左右対称で中央に最も多く、中央から離れるに従って少なくなる分布を示します。" },
+            { "id": 73, "question": "管理図が示す「工程は異常である」と判断される状態は何ですか？", "options": { "A": "管理限界線内にある", "B": "中心線付近に打点が多い", "C": "打点が管理限界線を越えて外れた場合や、特定のリズムで変動している場合", "D": "ばらつきが小さい" }, "answer": "C", "explanation": "管理図において、打点が管理限界線を越えて外れたり、特定のリズムで変動したりするなど、統計的に異常なパターンが見られる場合に「工程は異常である」と判断されます。" },
+            { "id": 74, "question": "チェックシートを使用する最大のメリットは何ですか？", "options": { "A": "データ分析が自動的に行われる", "B": "効率的かつ正確なデータ収集ができること", "C": "グラフが自動的に作成される", "D": "問題の原因が自動的に特定される" }, "answer": "B", "explanation": "チェックシートは、目的とするデータを効率的かつ正確に収集・記録するためのツールです。" },
+            { "id": 75, "question": "散布図で2つの変数の間に、一方が増加するともう一方も増加する関係がある場合、どのような相関があると言えますか？", "options": { "A": "負の相関", "B": "相関なし", "C": "正の相関", "D": "無相関" }, "answer": "C", "explanation": "散布図で2つの変数の間に、一方が増加するともう一方も増加する関係がある場合、正の相関があると言えます。" },
+            { "id": 76, "question": "報告・連絡・相談（ほうれんそう）において、連絡のポイントとして最も適切なものはどれですか？", "options": { "A": "事実だけでなく推測も伝える", "B": "重要な情報は、口頭で伝えるだけにする", "C": "重要な関係者には必ず伝えるべき情報を、速やかに正確に伝える", "D": "業務が忙しい場合は、連絡を省略してもよい" }, "answer": "C", "explanation": "連絡は、重要な関係者に必要な情報を速やかに正確に伝えることが重要です。" },
+            { "id": 77, "question": "報告・連絡・相談（ほうれんそう）において、相談のポイントとして最も適切なものはどれですか？", "options": { "A": "自分で解決できない問題はすぐに上司に丸投げする", "B": "相談は自分の意見を述べず、ただ質問するだけにする", "C": "自分で考えた上で、解決策や進め方をいくつか提案し、上司や先輩の意見を聞く", "D": "相談は、自分の責任を回避するために行う" }, "answer": "C", "explanation": "相談は、自分で考えた上で、解決策や進め方をいくつか提案し、上司や先輩の意見を聞くことで、より良い解決策を見つけることができます。" },
+            { "id": 78, "question": "5W1Hの「H」は何を意味しますか？", "options": { "A": "When (いつ)", "B": "Who (だれが)", "C": "What (何を)", "D": "How (どのように)" }, "answer": "D", "explanation": "5W1HのHは「How（どのように）」を意味します。" },
+            { "id": 79, "question": "三現主義における「現実」とは何を指しますか？", "options": { "A": "実際の場所", "B": "実際の物", "C": "実際の状況（問題の進捗状況など）", "D": "実際の記録" }, "answer": "C", "explanation": "三現主義の「現実」は、問題がどのような状況になっているか（実際の状況）を意味します。" },
+            { "id": 80, "question": "5ゲン主義において、三現主義に加えて重視される2つの「ゲン」は何ですか？", "options": { "A": "原点、源流", "B": "原理、原則", "C": "現像、現象", "D": "原稿、原本" }, "answer": "B", "explanation": "5ゲン主義は、三現主義に「原理」と「原則」を加えたものです。" },
+            { "id": 81, "question": "職場マナーで「時間を厳守する」ことの重要性として最も適切なものはどれですか？", "options": { "A": "自分の仕事が早く終わるため", "B": "上司に良い印象を与えるため", "C": "他のメンバーや組織全体の業務に影響を与えないため", "D": "残業を減らすため" }, "answer": "C", "explanation": "時間の厳守は、自分だけでなく組織全体の業務円滑化と周囲への配慮のために重要です。" },
+            { "id": 82, "question": "ヒヤリ・ハット活動の目的は何ですか？", "options": { "A": "事故が起きた原因を究明する", "B": "作業中に危険な状態や行動があったことを体験・報告し、再発防止につなげる", "C": "危険な作業を中止させる", "D": "災害時の緊急対応訓練を行う" }, "answer": "B", "explanation": "ヒヤリ・ハット活動は、作業中に危険な状態や行動があったことを体験・報告し、同様の事態が災害に発展するのを未然に防ぐことを目的とします。" },
+            { "id": 83, "question": "「製品（サービスや製品）」の定義で最も適切なものはどれですか？", "options": { "A": "製造業で生産されるものだけを指す", "B": "顧客に提供され、顧客が生産物を生み出すもの", "C": "企業内部で完結するすべての生産物", "D": "物理的な形を持つものだけを指す" }, "answer": "B", "explanation": "製品（サービスや製品）とは、顧客に提供され、顧客がそれを利用して生産物を生み出すものとされています。" },
+            { "id": 84, "question": "品質管理における「課題」の定義で最も適切なものはどれですか？", "options": { "A": "解決できない問題", "B": "設定した目標と現実との間に存在するギャップ", "C": "顧客からの苦情", "D": "達成済みの目標" }, "answer": "B", "explanation": "課題とは、「設定しようとする目標と現実との間に存在するギャップ」と定義されます。" },
+            { "id": 85, "question": "検査の結果、仕様や規格に合致しない製品やサービスを何と呼びますか？", "options": { "A": "良品", "B": "不適合品", "C": "不良品", "D": "返品" }, "answer": "B", "explanation": "検査の結果、仕様や規格に合致しない製品やサービスは「不適合品」と呼ばれます。" },
+            { "id": 86, "question": "QCサークル活動の目的として最も適切なものはどれですか？", "options": { "A": "従業員の給与を上げる", "B": "品質管理活動の一環として、職場の問題解決や改善を自発的に行う", "C": "企業間の競争に勝つ", "D": "新規顧客を獲得する" }, "answer": "B", "explanation": "QCサークル活動は、品質管理活動の一環として、職場の問題解決や改善を自発的に行うことを目的としています。" },
+            { "id": 87, "question": "ロットの定義で最も適切なものはどれですか？", "options": { "A": "個々の製品", "B": "同じ条件下で生産された、または生産されたと思われる製品の集まり", "C": "不適合品のみの集まり", "D": "顧客への出荷単位" }, "answer": "B", "explanation": "ロットとは、同じ条件下で生産された、または生産されたと思われる製品の集まりです。" },
+            { "id": 88, "question": "測定値のばらつきの程度を示す尺度で、平均からの偏差の二乗の平均を何と呼びますか？", "options": { "A": "範囲", "B": "中央値", "C": "分散", "D": "標準偏差" }, "answer": "C", "explanation": "分散は、測定値のばらつきの程度を示す尺度で、平均からの偏差の二乗の平均です。" },
+            { "id": 89, "question": "異常の原因のうち、一時的で偶然に発生し、根本的な対策を必要としない原因を何と呼びますか？", "options": { "A": "系統原因", "B": "偶然原因", "C": "管理不能原因", "D": "突発原因" }, "answer": "B", "explanation": "偶然原因は、一時的で偶然に発生し、通常は工程を停止して対策を講じる必要がない原因です。" },
+            { "id": 90, "question": "異常の原因のうち、特定の要因によって発生し、根本的な対策が必要な原因を何と呼びますか？", "options": { "A": "偶然原因", "B": "異常原因（特殊原因）", "C": "一時原因", "D": "自然原因" }, "answer": "B", "explanation": "異常原因（特殊原因）は、特定の要因によって発生し、根本的な対策が必要な原因です。" },
+            { "id": 91, "question": "職場において、整理、整頓、清掃、清潔、躾（しつけ）の5つのSを推進する活動は何ですか？", "options": { "A": "5ゲン主義", "B": "5W1H", "C": "5S活動", "D": "ほうれんそう" }, "answer": "C", "explanation": "はじめにのセクションで、企業活動における重要な要素として「5S（整理・整頓・清掃・清潔・躾）」が挙げられています。" },
+            { "id": 92, "question": "品質管理の基本知識で、データの種類を大きく分類すると何と何がありますか？", "options": { "A": "定性的データと定量的データ", "B": "計量値データと計数値データ", "C": "連続データと離散データ", "D": "一次データと二次データ" }, "answer": "B", "explanation": "品質管理で取り扱うデータは、大きく分類すると「計量値データ」と「計数値データ」があります。" },
+            { "id": 93, "question": "品質管理検定4級の学習を通じて、個人として身につけるべきことの最終目標は何ですか？", "options": { "A": "高度な統計解析能力", "B": "組織のトップリーダーになること", "C": "社会人としての基礎的な素養を習得し、より良い製品づくりに貢献すること", "D": "特定の専門分野で深く掘り下げること" }, "answer": "C", "explanation": "QC検定4級は、品質管理の基礎を学び、社会人としての基礎的な素養を習得し、社会人としてより良い製品づくりに必要な行動を身につけることを目的としています。" },
+            { "id": 94, "question": "管理図における中心線（CL）は何を示しますか？", "options": { "A": "上側管理限界", "B": "下側管理限界", "C": "工程の平均値または目標値", "D": "異常なばらつき" }, "answer": "C", "explanation": "管理図の中心線（CL）は、工程の平均値または目標値を示します。" },
+            { "id": 95, "question": "組織がより良い製品やサービスを作り出すために、品質の考え方や管理の進め方に関して理解を深めることが求められる目的は何ですか？", "options": { "A": "利益の最大化", "B": "競合他社に勝つため", "C": "組織活動のすべての段階で人々の生活を支えるため", "D": "技術革新を推進するため" }, "answer": "C", "explanation": "品質管理は、日本製品の品質を支え、世界の人々の生活を支えるために、すべての人が理解すべき重要な考え方や方法論を含んでいます。" },
+            { "id": 96, "question": "QC検定4級の「手引き」では、品質管理活動がどのような分野に適用されると述べられていますか？", "options": { "A": "製造業のみ", "B": "サービス業のみ", "C": "企業、組織、病院、学校、スーパーマーケットなど、あらゆる組織活動", "D": "IT産業のみ" }, "answer": "C", "explanation": "品質管理は、企業、会社、あるいは病院、学校、スーパーマーケット、ホテル、レストラン、銀行、証券会社など、あらゆる組織の活動に適用されると述べられています。" },
+            { "id": 97, "question": "品質管理検定の目的の一つとして、品質管理活動を通じて何を向上させることが挙げられていますか？", "options": { "A": "会社の知名度", "B": "個人の給与", "C": "製品やサービスの品質維持・改善", "D": "競合他社の売上" }, "answer": "C", "explanation": "品質管理検定は、製品やサービスの品質維持・改善とともに、仕事や組織活動を本来あるべき方向に導くことを通じて、コストダウンや量・納期の改善も実現しようという目的で設立されました。" },
+            { "id": 98, "question": "品質を向上させ続けるための活動は、組織に所属するすべての人々がどのように関わるべきですか？", "options": { "A": "特定の専門家のみが担当する", "B": "経営層のみが意思決定を行う", "C": "すべての人が品質管理を徹底し、意識向上も含む", "D": "品質管理部門のみが活動する" }, "answer": "C", "explanation": "品質を向上させようとするなら、組織に所属するすべての人々が、その意識向上も含め、品質管理の徹底を継続していくことが不可欠です。" },
+            { "id": 99, "question": "品質管理において、「不適合品」とは何ですか？", "options": { "A": "顧客の期待を超えた製品", "B": "要求事項を満たしていないこと", "C": "高価な製品", "D": "欠陥がない製品" }, "answer": "B", "explanation": "不適合品とは、検査の結果、製品が要求事項を満たしていないことを指します。" },
+            { "id": 100, "question": "品質管理の基本的な考え方や手法が日本中で活用されることを目指すのは、どのような人材の育成のためですか？", "options": { "A": "海外で活躍するグローバル人材", "B": "経営戦略を策定する人材", "C": "品質管理の重要な資源としての人材を大きく成長させる有効な方法", "D": "新しい技術を開発する研究者" }, "answer": "C", "explanation": "品質管理は、組織の重要な資源としての人材を大きく成長させる有効な方法であり、その基本的な考え方や手法が日本中で活用されることが望まれています。" }
+        ];
+
+        let currentQuestions = [];
+        let userAnswers = {};
+
+        const quizContainer = document.getElementById('quiz-container');
+        const resultContainer = document.getElementById('result-container');
+        const submitBtn = document.getElementById('submit-btn');
+        const retryBtn = document.getElementById('retry-btn');
+        const pdfBtn = document.getElementById('pdf-btn');
+        const csvBtn = document.getElementById('csv-btn');
+
+        // Fisher-Yates shuffle algorithm
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function startQuiz() {
+            // Reset state
+            userAnswers = {};
+            resultContainer.innerHTML = '';
+            resultContainer.classList.add('hidden');
+            quizContainer.classList.remove('hidden');
+            submitBtn.classList.remove('hidden');
+            retryBtn.classList.add('hidden');
+            pdfBtn.classList.add('hidden');
+            csvBtn.classList.add('hidden');
+
+            // Select 5 random questions
+            const shuffled = [...allQuestions];
+            shuffleArray(shuffled);
+            currentQuestions = shuffled.slice(0, 5);
+
+            displayQuestions();
+        }
+
+        function displayQuestions() {
+            quizContainer.innerHTML = '';
+            currentQuestions.forEach((q, index) => {
+                const questionElement = document.createElement('div');
+                questionElement.className = 'question-card p-6 rounded-lg mb-6 shadow-lg';
+                
+                let optionsHtml = '';
+                for (const key in q.options) {
+                    optionsHtml += `
+                        <div>
+                            <input type="radio" name="question${q.id}" id="q${q.id}_${key}" value="${key}" class="hidden">
+                            <label for="q${q.id}_${key}" class="option-label block p-4 rounded-lg cursor-pointer">
+                                <span class="font-bold mr-2">${key}.</span> ${q.options[key]}
+                            </label>
+                        </div>
+                    `;
+                }
+
+                questionElement.innerHTML = `
+                    <h3 class="text-xl font-bold mb-4 text-gray-100">${index + 1}. ${q.question}</h3>
+                    <div class="space-y-3">${optionsHtml}</div>
+                `;
+                quizContainer.appendChild(questionElement);
+            });
+
+            // Add event listeners for radio buttons
+            document.querySelectorAll('input[type="radio"]').forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    const questionId = e.target.name.replace('question', '');
+                    userAnswers[questionId] = e.target.value;
+                });
+            });
+        }
+
+        function submitAnswers() {
+            let score = 0;
+            quizContainer.classList.add('hidden');
+            resultContainer.classList.remove('hidden');
+            resultContainer.innerHTML = '';
+
+            // Create and append summary
+            const summaryElement = document.createElement('div');
+            summaryElement.id = 'result-summary';
+            summaryElement.className = 'p-6 rounded-lg text-center text-white shadow-xl mb-8';
+            
+            // Calculate score first
+            currentQuestions.forEach(q => {
+                if (userAnswers[q.id] === q.answer) {
+                    score++;
+                }
+            });
+
+            let summaryMessage = '';
+            const percentage = (score / currentQuestions.length) * 100;
+            if (percentage === 100) {
+                summaryMessage = '素晴らしいです！全問正解です！';
+            } else if (percentage >= 80) {
+                summaryMessage = '優秀です！あと一歩でした。';
+            } else if (percentage >= 60) {
+                summaryMessage = '良い調子です。復習して完璧を目指しましょう。';
+            } else {
+                summaryMessage = 'お疲れ様でした。解説を読んでしっかり復習しましょう。';
+            }
+
+            summaryElement.innerHTML = `
+                <h2 class="text-3xl font-bold font-serif mb-2">結果</h2>
+                <p class="text-5xl font-bold mb-4">${score} / ${currentQuestions.length}</p>
+                <p class="text-xl">${summaryMessage}</p>
+            `;
+            resultContainer.appendChild(summaryElement);
+
+            // Display individual results
+            currentQuestions.forEach((q, index) => {
+                const userAnswer = userAnswers[q.id];
+                const isCorrect = userAnswer === q.answer;
+                
+                const resultElement = document.createElement('div');
+                resultElement.className = `result-card p-6 rounded-lg mb-6 shadow-lg ${isCorrect ? 'result-correct' : 'result-incorrect'}`;
+
+                let optionsHtml = '';
+                for (const key in q.options) {
+                    let optionClass = 'text-gray-300';
+                    let indicator = '';
+                    if (key === q.answer) {
+                        optionClass = 'text-green-300 font-bold';
+                        indicator = ' (正解)';
+                    }
+                    if (key === userAnswer && !isCorrect) {
+                        optionClass = 'text-red-300 line-through';
+                        indicator = ' (あなたの回答)';
+                    }
+                     if (key === userAnswer && isCorrect) {
+                        indicator = ' (正解・あなたの回答)';
+                    }
+                    optionsHtml += `<li class="${optionClass}">${key}. ${q.options[key]}${indicator}</li>`;
+                }
+
+                resultElement.innerHTML = `
+                    <h3 class="text-xl font-bold mb-4">${index + 1}. ${q.question}</h3>
+                    <ul class="list-none space-y-2 mb-4">${optionsHtml}</ul>
+                    <div class="explanation p-4 rounded-md mt-4">
+                        <h4 class="font-bold text-lg text-yellow-400">解説</h4>
+                        <p class="mt-2 text-gray-300">${q.explanation}</p>
+                    </div>
+                `;
+                resultContainer.appendChild(resultElement);
+            });
+
+            // Update buttons
+            submitBtn.classList.add('hidden');
+            retryBtn.classList.remove('hidden');
+            pdfBtn.classList.remove('hidden');
+            csvBtn.classList.remove('hidden');
+        }
+
+        function exportToPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Add custom font
+            // NOTE: jsPDF requires the font to be available. For simplicity, we'll use a standard font.
+            // For full Japanese support, a more complex setup with font files is needed.
+            // This example will use standard fonts, which may not render Japanese characters correctly without a proper setup.
+            // A workaround is to draw text on a canvas and add it as an image, but that's complex.
+            // Let's try to add a font that might support Japanese.
+            doc.addFont('NotoSansJP-Regular.ttf', 'NotoSansJP', 'normal');
+            doc.setFont('NotoSansJP');
+
+
+            let y = 20;
+            const pageHeight = doc.internal.pageSize.height;
+            const margin = 15;
+
+            // Header
+            doc.setFontSize(20);
+            doc.text("QC検定4級 学習結果レポート", margin, y);
+            y += 15;
+
+            // Summary
+            const score = currentQuestions.filter(q => userAnswers[q.id] === q.answer).length;
+            doc.setFontSize(12);
+            doc.text(`総合成績: ${score} / ${currentQuestions.length} 問正解`, margin, y);
+            y += 10;
+
+            currentQuestions.forEach((q, index) => {
+                const userAnswer = userAnswers[q.id] || "未回答";
+                const isCorrect = userAnswer === q.answer;
+                const resultText = isCorrect ? "正解" : "不正解";
+
+                const questionText = `${index + 1}. ${q.question}`;
+                const answerText = `あなたの回答: ${userAnswer} (${resultText}) | 正解: ${q.answer}`;
+                const explanationText = `解説: ${q.explanation}`;
+                
+                const questionLines = doc.splitTextToSize(questionText, 180);
+                const answerLines = doc.splitTextToSize(answerText, 180);
+                const explanationLines = doc.splitTextToSize(explanationText, 180);
+                
+                const blockHeight = (questionLines.length + answerLines.length + explanationLines.length) * 7 + 10;
+
+                if (y + blockHeight > pageHeight - margin) {
+                    doc.addPage();
+                    y = margin;
+                }
+
+                doc.setFontSize(12);
+                doc.setFont(undefined, 'bold');
+                doc.text(questionLines, margin, y);
+                y += questionLines.length * 7;
+
+                doc.setFont(undefined, 'normal');
+                doc.text(answerLines, margin, y);
+                y += answerLines.length * 7;
+
+                doc.setTextColor(100);
+                doc.text(explanationLines, margin, y);
+                y += explanationLines.length * 7 + 10;
+                doc.setTextColor(0);
+            });
+            
+            // Unfortunately, jsPDF's built-in font support for Japanese is limited.
+            // The output might not be perfect without embedding a proper CJK font.
+            // We'll add a note about this limitation.
+            doc.save("QC検定_学習結果.pdf");
+        }
+
+        function exportToCSV() {
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // \uFEFF for BOM
+            csvContent += "問題番号,問題文,あなたの回答,正解,正誤,解説\r\n";
+
+            currentQuestions.forEach((q, index) => {
+                const userAnswer = userAnswers[q.id] || "未回答";
+                const isCorrect = userAnswer === q.answer;
+                const resultText = isCorrect ? "正解" : "不正解";
+
+                const row = [
+                    index + 1,
+                    `"${q.question.replace(/"/g, '""')}"`,
+                    userAnswer,
+                    q.answer,
+                    resultText,
+                    `"${q.explanation.replace(/"/g, '""')}"`
+                ].join(',');
+                csvContent += row + "\r\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "QC検定_学習結果.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Event Listeners
+        submitBtn.addEventListener('click', submitAnswers);
+        retryBtn.addEventListener('click', startQuiz);
+        pdfBtn.addEventListener('click', exportToPDF);
+        csvBtn.addEventListener('click', exportToCSV);
+
+        // Initial load
+        window.onload = startQuiz;
+    </script>
+</body>
+</html>
