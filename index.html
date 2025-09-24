@@ -100,9 +100,10 @@
 
         <div id="start-screen" class="start-screen p-8 rounded-lg shadow-2xl text-center">
             <h2 class="text-2xl font-bold mb-6">学習モードを選択してください</h2>
-            <div class="flex flex-col sm:flex-row justify-center gap-4">
+            <div class="flex flex-col sm:flex-row justify-center gap-4 flex-wrap">
                 <button id="start-random-btn" class="btn btn-primary">【ランダムで挑戦】</button>
                 <button id="start-all-btn" class="btn btn-secondary">【全問に挑戦】</button>
+                <button id="start-qc7-btn" class="btn btn-secondary">【QC七つ道具 特化問題】</button>
             </div>
         </div>
 
@@ -114,18 +115,23 @@
             <!-- Results will be dynamically inserted here -->
         </div>
 
-        <div id="button-container" class="text-center mt-8 space-x-0 sm:space-x-4 space-y-4 sm:space-y-0 hidden">
+        <div id="button-container" class="text-center mt-8 space-y-4 hidden">
             <button id="submit-btn" class="btn btn-primary w-full sm:w-auto">採点する</button>
-            <button id="retry-btn" class="btn btn-secondary hidden w-full sm:w-auto">【ランダムで再挑戦】</button>
-            <button id="all-questions-btn" class="btn btn-secondary hidden w-full sm:w-auto">【全問に再挑戦】</button>
-            <button id="pdf-btn" class="btn btn-secondary hidden w-full sm:w-auto">PDFで出力</button>
-            <button id="csv-btn" class="btn btn-secondary hidden w-full sm:w-auto">CSVで出力</button>
+            <div id="retry-buttons" class="flex flex-col sm:flex-row justify-center gap-4 flex-wrap">
+                <button id="retry-btn" class="btn btn-secondary hidden w-full sm:w-auto">【ランダムで再挑戦】</button>
+                <button id="all-questions-btn" class="btn btn-secondary hidden w-full sm:w-auto">【全問に再挑戦】</button>
+                <button id="retry-qc7-btn" class="btn btn-secondary hidden w-full sm:w-auto">【QC七つ道具で再挑戦】</button>
+            </div>
+             <div id="export-buttons" class="flex flex-col sm:flex-row justify-center gap-4 flex-wrap">
+                <button id="pdf-btn" class="btn btn-secondary hidden w-full sm:w-auto">PDFで出力</button>
+                <button id="csv-btn" class="btn btn-secondary hidden w-full sm:w-auto">CSVで出力</button>
+            </div>
         </div>
     </div>
 
     <script>
         const allQuestions = [
-            // Existing 100 questions
+            // Original 100 questions
             { "id": 1, "question": "品質管理検定（QC検定）4級の主な対象者は誰ですか？", "options": { "A": "品質管理の専門家", "B": "経営層", "C": "品質管理を初めて学ぶ人や、企業・組織で働くすべての人々", "D": "品質管理部門のリーダー" }, "answer": "C", "explanations": { "A": "品質管理の専門家は、より上位の級（例: 2級や1級）の対象者となります。", "B": "経営層も品質管理の知識は必要ですが、4級はより実践的な担当者や初学者を主な対象としています。", "C": "QC検定4級は、品質管理を初めて学ぶ人や、企業、組織に所属し、そこで働くすべての人々を対象としています。", "D": "品質管理部門のリーダーは、より専門的な知識が求められるため、3級以上の内容が適しています。" } },
             { "id": 2, "question": "品質とは一般的にどのように定義されますか？", "options": { "A": "価格の安さ", "B": "機能の多さ", "C": "使用目的を満たしている程度（fitness for use）", "D": "最新技術の導入度" }, "answer": "C", "explanations": { "A": "価格の安さは「コスト」の側面であり、品質の直接的な定義ではありません。", "B": "機能の多さは製品の「仕様」の一部ですが、それが顧客の目的に合致していなければ品質が高いとは言えません。", "C": "品質とは、「使用目的を満たしている程度（fitness for use）」と定義され、顧客の期待を満たし顧客満足を得ることが重要です。", "D": "最新技術の導入は製品の魅力の一つですが、それが品質を保証するわけではありません。" } },
             { "id": 3, "question": "品質に関する問題は、理想と現実の間に何が生じることと捉えられますか？", "options": { "A": "利益", "B": "ギャップ", "C": "成功", "D": "競争" }, "answer": "B", "explanations": { "A": "利益は企業活動の結果であり、問題そのものではありません。", "B": "品質に関する問題は、あるべき姿（理想）と現状（現実）の間に生じる「ギャップ」と捉えられます。このギャップを埋めるのが問題解決です。", "C": "成功は目標達成の状態であり、問題とは逆の概念です。", "D": "競争は市場環境であり、品質問題の直接的な定義ではありません。" } },
@@ -556,3 +562,4 @@
     </script>
 </body>
 </html>
+
